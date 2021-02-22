@@ -1,0 +1,11 @@
+{
+    "name": "Linkle",
+    "version": "0.0.0",
+    "description": "A hyperlink utility Discord bot.",
+    "dependencies": {
+        "path": "^0.12.7",
+        "dotenv": "^8.2.0",
+        "discord.js": "^12.5.1",
+        "emojilib": "^3.0.0"
+    }
+}
