@@ -77,8 +77,8 @@ var triggers = new Map([
             [
                 `That's an ableist slur.`,
                 `Not cool bro.`,
-                `Did you really just say that?`
-                    `I can't believe you'd say that.`,
+                `Did you really just say that?`,
+                `I can't believe you'd say that.`,
                 `I can't believe you'd say that.`,
                 `That's really insensitive to mentally challenged people.`,
                 `Would you say that if there was an autistic person here?`
@@ -107,8 +107,11 @@ bot.on('message', msg => {
         PREFIXED COMMANDS
         Functions that will execute if Linkle's prefix is used. 
         */
-        const prefix = process.env.PREFIX || '<';
-        if (msg.content.substr(0, 1) === prefix) {
+        const prefix = process.env.PREFIX || '>';
+        if (msg.content.startsWith(prefix)) {
+
+            //Attach a timestamp since Discord's server time is different
+            msg.linkleSawAt = Date.now();
 
             command(msg);
             return;
@@ -118,7 +121,7 @@ bot.on('message', msg => {
         TRIGGERS
         Functions that will execute if a trigger string is sent.
          */
-        contains(msg, triggers)
+        contains(msg, triggers);
 
         //Attempt to turn JSON that Aaron uploads into a Discord MessageEmbed.
         if (msg.author.id === '210663001471188992') {
@@ -141,11 +144,9 @@ bot.on('messageUpdate', (oMsg, msg) => {
 
         console.log(`Found a cool embed link! ${msg.embeds[0].url}`);
         relinkles.splice(index, 1);
-
     }
 
     //A testing function to help me figure out how to make embeds look good.
-    //This needs a brief timeout since Discord doesn't process embeds instantly.
     if (msg.channel.name === 'linkles-house' && msg.author.id !== bot.user.id) {
         if (msg.embeds.length > 0) {
             console.log(`Someone is posting embeds in my house! WHAT THE HELL.`);
@@ -200,16 +201,16 @@ function contains(msg, trigs) {
 async function command(msg) {
 
     //Process the message to extract commands and args
-    let cont = msg.content.toLowerCase();
+    let cont = msg.content.substr(1).trim().toLowerCase();
     let spaceIndex = cont.indexOf(' '); //Check if we need to process args
     let cmd, args = [];
     if (spaceIndex < 0) {
-        cmd = cont.substr(1);
+        cmd = cont;
     } else {
-        cmd = cont.substring(1, spaceIndex);
+        cmd = cont.substring(0, spaceIndex);
         args = cont.substr(spaceIndex + 1).split(/ +/);
     }
-    console.log(`[${msg.guild.name} < ${msg.channel.name} < ${msg.author.username} <${cmd}${(args.length > 0) ? cont.substr(spaceIndex) : ''}`);
+    console.log(`[${msg.guild.name} > #${msg.channel.name} > @${msg.author.username} >${cmd}${(args.length > 0) ? cont.substr(spaceIndex) : ''}`);
 
     switch (cmd) {
         case 'linkle':
@@ -218,32 +219,76 @@ async function command(msg) {
         case 'sparkle':
             re('act', msg, '✨');
             break;
+        case '$':
         case 'stock':
             if (args.length < 1) {
                 re('ply', msg, 'Ya need to give me a ticker, dingus!');
                 break;
             }
-            try {
-                re('ply', msg, await fetchStock(args[0]));
-            } catch (err) {
-                re('ply', msg, err);
-            }
-            break;
-        case 'doge':
             (async () => {
                 try {
-                    re('ply', msg, await dogeCoin((args.length > 0) ? args[0]: undefined));
+                    re('ply', msg, await fetchStock(args[0]));
                 } catch (err) {
                     re('ply', msg, err);
                 }
             })()
             break;
+        case 'curr':
+        case 'c':
+            if (args.length < 1) {
+                re('ply', msg, 'Ya need to give me a currency code, dingus!');
+                break;
+            }
+            (async () => {
+                try {
+                    re('ply', msg, await fetchCurr(args[0], args[1]));
+                } catch (err) {
+                    re('ply', msg, err);
+                }
+            })()
+            break;
+        case 'doge':
+            (async () => {
+                try {
+                    re('ply', msg, await dogeCoin(args[0]));
+                } catch (err) {
+                    re('ply', msg, err);
+                }
+            })()
+            break;
+        case 'help':
+            switch (args[0]) {
+                case 'linkle':
+                    re('ply', msg, `\`> linkle\`\n*You say linkle, I say lonkle! Easy way to check if I'm online.*`);
+                    break;
+                case 'sparkle':
+                    re('ply', msg, `\`> sparkle\`\n*I'm a simple girl. I hear a sparkle, I give a sparkle.*`);
+                    break;
+                case 'stock':
+                case '$':
+                    re('ply', msg, `\`> stock [ticker]\`\n\`> $ [ticker]\`\n*I'll ring up my friends at AlphaVantage and fetch a report about the stock that you provide a ticker for.'*`);
+                    break;
+                case 'curr':
+                case 'c':
+                    re('ply', msg, `\`> curr [from] [to|USD]\`\n\`> c [from] [to|USD]\`\n*I'll ring up the dudes at AlphaVantage and get the conversion rate for any two real or virtual currencies. If you don't give me a second one I'll just do USD.*`);
+                    break;
+                case 'doge':
+                    re('ply', msg, `\`> doge\`\n*wow. so gains. much tendies. Say this and I'll tell ya what Dogecoin is worth.*`);
+                    break;
+                case undefined:
+                    re('ply', msg, `**COMMANDS:** linkle, sparkle, stock, curr, doge.\n*Type help [command] for more info.*`);
+                    //Sometimes say "no" lol
+                    break;
+                default:
+                    re('ply', msg, `Help you with what? I don't understand.\nType >help for my command list.`);
+            }
+            break;
         default:
-            if(cmd.startsWith('http')) {
+            if (cmd.startsWith('http') || msg.attachments.length > 0) {
                 relinkles.push(msg.id);
+                //reli.relinkle(msg);
             } else {
                 re('ply', msg, `I don't recognize that command...`);
-
             }
     }
 }
@@ -271,20 +316,20 @@ function re(type, msg, reply) {
 
     switch (type) {
         case 'ply':
+            reply = (reply.length > 0) ? reply : ':regional_indicator_n::regional_indicator_u::regional_indicator_l::regional_indicator_l:';
             msg.channel.send(reply);
-            if (err) return err;
             break;
         case 'act':
             msg.react(reply);
-            if (err) return err;
             break;
         default:
             console.error(`You want me to re-what? Get your "type" string together. There are two choices, it's not that difficult.`);
     }
 
     let dateNow = new Date();
-    let duration = dateNow.getTime() - msg.createdTimestamp;
-    let logMsg = `[${dateNow.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}] DUR: ${duration} TO: ${msg.author.username} MSG: ${(type === 'act') ? '((' + emoji[reply][0] + '))' : reply}`;
+    console.log(`timestamps: ${msg.linkleSawAt} > ${dateNow.getTime()}`);
+    let duration = dateNow.getTime() - msg.linkleSawAt;
+    let logMsg = `[${dateNow.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })}] DUR: ${duration}ms TO: ${msg.author.username} MSG: ${(type === 'act') ? '((' + emoji[reply][0] + '))' : reply}`;
     console.log(logMsg);
     logStream.write(logMsg + ' -Linkle\r\n');
 }
@@ -292,53 +337,16 @@ function re(type, msg, reply) {
 //Accesses the AlphaVantage API for a quote of the provided stock symbol.
 function fetchStock(symbol) {
 
-    return new Promise((resolve, reject) => {
+    let cryptoName = cryptoMap.get(symbol);
+    if (cryptoName !== undefined) {
 
-        let cryptoName = cryptoMap.get(symbol);
-        if (cryptoName === undefined) {
-
-            var get = https.get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHAVANTAGE_KEY}`, (res) => {
-
-                let data = '';
-                // A chunk of data has been recieved.
-                res.on('data', (chunk) => {
-                    data += chunk;
-                })
-
-                // The whole page has been received. Process it.
-                res.on('end', () => {
-                    let quote = JSON.parse(data)['Global Quote'];
-                    if (quote !== undefined) {
-                        if (quote['01. symbol'] !== undefined) {
-                            let rising = (quote['09. change'].substr(0, 1) != '-');
-                            let reply = `\`\`\`diff\n[[[${quote['01. symbol']} STOCK REPORT]]]\nOpened at ${quote['02. open']} | Hi: $${quote['03. high']} Lo: $${quote['04. low']} Vol: ${quote['06. volume']}\nClosed on ${quote['07. latest trading day']} at $${quote['05. price']} ${(rising) ? 'up' : 'down'} from $${quote['08. previous close']} \n${(rising) ? '+' + quote['10. change percent'] : quote['10. change percent']} (${quote['09. change']})\`\`\``;
-                            resolve(reply);
-                        } else {
-                            resolve(`${symbol.toUpperCase()} isn't a real stock symbol, silly!`);
-                        }
-                    }
-                })
-            });
-
-            get.on("error", (err) => {
-                reject(`Oof, I got an error: ${err.message}`);
-            })
-
-        } else {
-            resolve(`I think ${symbol.toUpperCase()} is a crypto ticker for ${cryptoName}. I don't know how to retrieve those yet...`);
-        }
-
-
-    })
-}
-
-//Accesses the AlphaVantage API for a dogeCoin quote in USD or the currency given.
-function dogeCoin(curr) {
+        re('ply', msg, `Ooh uh... ${cryptoName} is a cryptocurrency, you gotta use the \`>curr\` command for that. I'll do it for you this time tho, don't worry.`);
+        return fetchCurr(symbol);
+    }
 
     return new Promise((resolve, reject) => {
 
-        let endpoint = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=DOGE&to_currency=${(curr === undefined) ? 'USD' : curr}&apikey=${process.env.ALPHAVANTAGE_KEY}`;
-        var get = https.get(endpoint, (res) => {
+        var get = https.get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHAVANTAGE_KEY}`, (res) => {
 
             let data = '';
             // A chunk of data has been recieved.
@@ -348,26 +356,14 @@ function dogeCoin(curr) {
 
             // The whole page has been received. Process it.
             res.on('end', () => {
-
-                console.log(data);
-                if (data.length > 0) {
-
-                    let response = JSON.parse(data);
-                    if (response['Error Message'] !== undefined) {
-
-                        console.error(response['Error Message']);
-                        reject((curr === undefined) ? `Hm weird, the service didn't send anything back...` : `The service I use didn't return anything for ${curr}`);
-
-                    } else if (response['Realtime Currency Exchange Rate'] !== undefined) {
-
-                        let quote = response['Realtime Currency Exchange Rate'];
-                        let value = quote['5. Exchange Rate'];
-                        value = (curr === undefined || curr.toLowerCase() == 'usd') ? '$' + value : value;
-                        let reply = `[${quote['1. From_Currency Code']} => ${quote['3. To_Currency Code']}] ${value}`;
+                let quote = JSON.parse(data)['Global Quote'];
+                if (quote !== undefined) {
+                    if (quote['01. symbol'] !== undefined) {
+                        let rising = (quote['09. change'].substr(0, 1) != '-');
+                        let reply = `\`\`\`diff\n[[[${quote['01. symbol']} STOCK REPORT]]] ${Date.now() - reqOut}ms\nOpened at ${quote['02. open']} | Hi: $${quote['03. high']} Lo: $${quote['04. low']} Vol: ${quote['06. volume']}\nClosed on ${quote['07. latest trading day']} at $${quote['05. price']} ${(rising) ? 'up' : 'down'} from $${quote['08. previous close']} \n${(rising) ? '+' + quote['10. change percent'] : quote['10. change percent']} (${quote['09. change']})\`\`\``;
                         resolve(reply);
-
                     } else {
-                        reject('Something really weird happened...');
+                        resolve(`${symbol.toUpperCase()} isn't a real stock symbol, silly!`);
                     }
                 }
             })
@@ -375,9 +371,63 @@ function dogeCoin(curr) {
 
         get.on("error", (err) => {
             reject(`Oof, I got an error: ${err.message}`);
+        })
+    })
+}
+
+//Accesses the AlphaVantage API for a quote of the provided stock symbol.
+function fetchCurr(from, to) {
+
+    return new Promise((resolve, reject) => {
+
+        var get = https.get(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from}&to_currency=${to || 'USD'}&apikey=${process.env.ALPHAVANTAGE_KEY}`, (res) => {
+
+            /*  {
+                    "Realtime Currency Exchange Rate": {
+                        "1. From_Currency Code": "USD",
+                        "2. From_Currency Name": "United States Dollar",
+                        "3. To_Currency Code": "JPY",
+                        "4. To_Currency Name": "Japanese Yen",
+                        "5. Exchange Rate": "108.85000000",
+                        "6. Last Refreshed": "2021-03-18 05:59:01",
+                        "7. Time Zone": "UTC",
+                        "8. Bid Price": "108.85000000",
+                        "9. Ask Price": "108.85000000"
+                    }
+                } */
+
+            let data = '';
+            // A chunk of data has been recieved.
+            res.on('data', (chunk) => {
+                data += chunk;
+            })
+
+            // The whole page has been received. Process it.
+            res.on('end', () => {
+                let quote = JSON.parse(data)['Realtime Currency Exchange Rate'];
+                if (quote !== undefined) {
+                    if (quote['1. From_Currency Code'] !== undefined) {
+                        let rate = parseFloat(quote['5. Exchange Rate']);
+                        rate = (rate < 0.1) ? rate.toFixed(4) : rate.toFixed(2);
+                        let reply = `\`\`\`diff\n[[[${quote['1. From_Currency Code']} 1 => ${quote['3. To_Currency Code']} ${rate}]]]\`\`\``;
+                        resolve(reply);
+                    } else {
+                        reject(`Oof I got an unexpected response.`);
+                    }
+                }
+            })
         });
 
-    });
+        get.on("error", (err) => {
+            reject(`Oof, I got an error: ${err.message}`);
+        })
+    })
+}
+
+//Accesses the AlphaVantage API for a dogeCoin quote in USD or the currency given.
+function dogeCoin(curr) {
+
+    return fetchCurr('doge');
 }
 
 function readTxt(url) {
