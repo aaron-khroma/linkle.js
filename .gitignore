@@ -1,4 +1,6 @@
 *.env
+*.ai
+*.ai.pdf
 *.psd
 desktop.ini
 wip/*

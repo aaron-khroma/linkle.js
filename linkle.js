@@ -17,6 +17,7 @@ require('dotenv').config();
 //Load modules
 const https = require('https');
 const fs = require('fs');
+const { exec } = require('child_process');
 //const assert = require('assert'); Not ready to get into assert...
 const path = require('path');
 const emoji = require("emojilib");
@@ -38,6 +39,8 @@ bot.on('ready', () => {
 so I have to store messages here to check later when the message updates.*/
 var relinkles = [];
 
+//For TikTok links
+const tikTokUrl = /https:\/\/vm\.tiktok\.com\/[A-Za-z0-9]{9}\//;
 //Words and expressions that Linkle will respond to with unique functions.
 var triggers = new Map([
 
@@ -57,10 +60,12 @@ var triggers = new Map([
         re('act', msg, '✨');
     }],
 
-    //O__o Dirty humans...
-    ['penis', (msg) => {
-        console.log('Peener');
-        re('act', msg, '🍆');
+    //Post TikTok thumbnails.
+    [tikTokUrl, async (msg) => {
+        console.log('Ugh, a TikTok link...');
+        let garbage = await getTikTokThumbnail(msg.content.match(tikTokUrl)[0]);
+        re('ply', msg, `Look at ${sparkle() ? 'this :sparkle:garbage:sparkle: that' : 'what'} <@${msg.author.id}> sent! `);
+        re('ply', msg, garbage);
     }],
 
     //Police speech. Somewhere between an inside joke and an honest effort to address ableist stigmas.
@@ -181,15 +186,15 @@ bot.on('messageUpdate', (oMsg, msg) => {
 })
 
 //Iterates over a map, searching for trigger words in the message and calling the associated callbacks if found.
-function contains(msg, trigs) {
-    let lowered = msg.content.toLowerCase();
-    trigs.forEach((callback, key, map) => {
+function contains(msg, triggers) {
+    triggers.forEach((callback, key, map) => {
         if (typeof key === 'object') {
             let regex = new RegExp(key);
-            if (regex.test(lowered)) {
+            if (regex.test(msg.content)) {
                 callback(msg);
             }
         } else {
+            let lowered = msg.content.toLowerCase();
             if (lowered.indexOf(key) >= 0) {
                 callback(msg);
             }
@@ -295,7 +300,7 @@ async function command(msg) {
 
 //Retrieve a JSON file, process it, and post it.
 async function postEmbed(msg, url) {
-    let json = await downloadTxt(url);
+    let json = await downloadString(url);
     if (typeof json === 'object') {
         console.error(`Oh gosh, the downloader spit out an error: ${json.name} - ${json.message}`);
         return;
@@ -316,7 +321,7 @@ function re(type, msg, reply) {
 
     switch (type) {
         case 'ply':
-            reply = (reply.length > 0) ? reply : ':regional_indicator_n::regional_indicator_u::regional_indicator_l::regional_indicator_l:';
+            reply = (reply.length > 0) ? reply : ':regional_indicator_n::regional_indicator_u::regional_indicator_l::regional_indicator_l::zany_face:';
             msg.channel.send(reply);
             break;
         case 'act':
@@ -346,6 +351,7 @@ function fetchStock(symbol) {
 
     return new Promise((resolve, reject) => {
 
+        var reqOut = Date.now();
         var get = https.get(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHAVANTAGE_KEY}`, (res) => {
 
             let data = '';
@@ -380,6 +386,7 @@ function fetchCurr(from, to) {
 
     return new Promise((resolve, reject) => {
 
+        var reqOut = Date.now();
         var get = https.get(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from}&to_currency=${to || 'USD'}&apikey=${process.env.ALPHAVANTAGE_KEY}`, (res) => {
 
             /*  {
@@ -393,8 +400,14 @@ function fetchCurr(from, to) {
                         "7. Time Zone": "UTC",
                         "8. Bid Price": "108.85000000",
                         "9. Ask Price": "108.85000000"
-                    }
-                } */
+                    } 
+                } 
+                 OR
+                {
+                    "Error Message": "Invalid API call. Please retry or visit the documentation (https://www.alphavantage.co/documentation/) for CURRENCY_EXCHANGE_RATE."
+                }
+                
+                */
 
             let data = '';
             // A chunk of data has been recieved.
@@ -409,11 +422,11 @@ function fetchCurr(from, to) {
                     if (quote['1. From_Currency Code'] !== undefined) {
                         let rate = parseFloat(quote['5. Exchange Rate']);
                         rate = (rate < 0.1) ? rate.toFixed(4) : rate.toFixed(2);
-                        let reply = `\`\`\`diff\n[[[${quote['1. From_Currency Code']} 1 => ${quote['3. To_Currency Code']} ${rate}]]]\`\`\``;
+                        let reply = `\`\`\`diff\n[[[ ${quote['1. From_Currency Code']} 1 => ${quote['3. To_Currency Code']} ${rate} ]]] ${Date.now() - reqOut}ms\`\`\``;
                         resolve(reply);
-                    } else {
-                        reject(`Oof I got an unexpected response.`);
                     }
+                } else {
+                    reject(`Doesn't work, dunno why. Do better next time.`);
                 }
             })
         });
@@ -463,27 +476,39 @@ async function loadCryptoMap() {
 loadCryptoMap();
 
 //Downloads a file and returns the data as a string.
-function downloadTxt(url) {
+function downloadString(url) {
+
+    let options = {
+        method: 'GET',
+        headers: {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'en-US,en;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-GB;q=0.6',
+            'Sec-Fetch-User': '?1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
+        }
+    };
 
     return new Promise((resolve, reject) => {
 
-        let json = '';
-        const request = https.get(url, res => {
+
+        let str = '';
+        const request = https.request(url, options, res => {
             if (res.statusCode !== 200) {
                 let errorMessage = (url.indexOf('discord') < 0) ?
                     `The domain didn't send me the resource.` :
                     `Something's up with the Discord CDN...`;
-                reject(new Error(`${errorMessage} (${res.statusCode})`));
+                reject(new Error(`${errorMessage} (${res.statusCode}: ${res.statusMessage})`));
                 return;
             }
 
             // A chunk of data has been recieved.
             res.on('data', (chunk) => {
-                json += chunk;
+                str += chunk;
             })
             // All data has been recieved.
             res.on('end', (chunk) => {
-                resolve(json);
+                resolve(str);
             })
         });
 
@@ -492,6 +517,66 @@ function downloadTxt(url) {
         });
 
         request.end();
+    });
+}
+
+//Downloads a file and returns the data as a string.
+function getTikTokThumbnail(url) {
+
+    console.log(`Going to check out ${url}`);
+    return new Promise((resolve, reject) => {
+
+        let str = '';
+        const redirect = https.request(url, res => {
+            if (res.statusCode !== 301) {
+                resolve(`Oof, I think TikTok is down? (${res.statusCode}: ${res.statusMessage})`)
+                return;
+            }
+
+            // A chunk of data has been recieved.
+            res.on('data', (chunk) => {
+                str += chunk;
+            })
+
+            // All data has been recieved.
+            res.on('end', async (chunk) => {
+
+                let trueUrlRegex = /href="([\S]+)"/;
+                let trueUrl = str.match(trueUrlRegex)[1]; //This is the (group)
+                console.log(`Okay, I got the nasty true URL: ${trueUrl}`);
+                /* let reactPage;
+                try {
+                    reactPage = await downloadString(trueUrl);
+                } catch (err) {
+                    reject(`I guess TikTok doesn't want me to have that thumbnail... ${err.name} - ${err.message}`);
+                    return;
+                } */
+                let truePage;
+                exec(`curl ${trueUrl}`, function (err, stdout, stderr) {
+
+                    if (err) console.log(err);
+                    if (stderr) console.log(stderr);
+                    truePage = stdout;
+
+                    let tnPosition = truePage.indexOf('"covers":["');
+                    if (tnPosition < 0) {
+                        reject(`Uh wow something weird happened. No URL, sorry.`);
+                        console.log(`\n\n\nWHAT THE FUCK\n${truePage}\n\n\n`);
+                        return;
+                    }
+                    let urlStart = tnPosition + 11;
+                    let thumbnail = truePage.substring(urlStart, truePage.indexOf('"', urlStart + 1));
+                    resolve(thumbnail);
+                });
+
+            })
+        });
+
+        redirect.on('error', err => {
+            console.error(err);
+        });
+
+        redirect.end();
     });
 }
 
