@@ -11,7 +11,14 @@
 //LAUNCH
 //sudo nodemon -r dotenv/config linkle.js dotenv_config_path=/meanjs/linkle/linkle.env
 
-//Load Linkle's secret deets
+/* 
+_ _  _ _ ___ _ ____ _    _ ___  ____ ___ _ ____ _  _ 
+| |\ | |  |  | |__| |    |   /  |__|  |  | |  | |\ | 
+| | \| |  |  | |  | |___ |  /__ |  |  |  | |__| | \| 
+
+*/
+
+//Load Linkle's secret deets, no peekin' mah tokens!
 require('dotenv').config();
 
 //Load modules
@@ -35,42 +42,43 @@ bot.on('ready', () => {
   console.info(`Okay, ${bot.user.tag} is logged in!`);
 });
 
+///////////////////////////////////////////////////////////////////
+///// !!! UNDER CONSTRUCTION !!! //////////////////////////////////
+///////////////////////////////////////////////////////////////////
+/*
+// The data for our command
+const commandData = {
+  name: 'echo',
+  description: 'Replies with your input!',
+  options: [{
+    name: 'input',
+    type: 'STRING',
+    description: 'The input which should be echoed back',
+    required: true,
+  }],
+};
+
+client.once('ready', () => {
+  // Creating a global command
+  client.application.commands.create(commandData);
+
+  // Creating a guild-specific command
+  client.guilds.cache.get('id').commands.create(commandData);
+});
+*/
+///////////////////////////////////////////////////////////////////
+
+/*
+____ _  _ ____ _  _ ___ ____ 
+|___ |  | |___ |\ |  |  [__  
+|___  \/  |___ | \|  |  ___] 
+
+*/
+
 /*The Message object doesn't emit an event when a message's embeds load, 
 so I have to store messages here to check later when the message updates.
 (There's probably a better way to do this...) */
 var relinkles = [];
-
-//For TikTok links
-const tikTokUrl = /https:\/\/vm\.tiktok\.com\/[A-Za-z0-9]{9}\//;
-//Words and expressions that Linkle will respond to with unique functions.
-var triggers = new Map([
-
-  //If there is a dollar sign in the message, perform a more intensive RegEx search for stock symbols.
-  ['$', async (msg) => {
-    let $symbols = msg.content.match(/(?<=^|\s)(\$[A-Za-z\.\-]{1,16})/);
-    if ($symbols) {
-      let symbol = $symbols[0].substr(1).toLowerCase();
-      console.log(`Found a stock ticker! I'll ask AlphaAdvantage about ${symbol}.`);
-      re('ply', msg, await fetchStock(symbol));
-    }
-  }],
-
-  //If someone says something like "Linkle", "linkle-esque", or "Linkle's", put a sparkle on it! 
-  [/(?<=^|\s)(linkle)/i, (msg) => {
-    console.log('Someone said my nameeee!');
-    re('act', msg, '✨');
-  }],
-
-  //Post TikTok thumbnails.
-  [tikTokUrl, async (msg) => {
-    console.log('Ugh, a TikTok link...');
-    let garbage = await getTikTokThumbnail(msg.content.match(tikTokUrl)[0]).catch(err => {
-      re('ply', msg, `There was an error somewhere down the line...\n${err.message}`);
-    });
-    re('ply', msg, `Look at ${sparkle() ? 'this :sparkle:garbage:sparkle: that' : 'what'} <@${msg.author.id}> sent! `);
-    re('ply', msg, garbage);
-  }],
-]);
 
 bot.on('message', msg => {
 
@@ -154,6 +162,45 @@ bot.on('messageUpdate', (oMsg, msg) => {
   }
 })
 
+/* 
+_  _ ____ _  _ ___  _    ____ ____ ____ 
+|__| |__| |\ | |  \ |    |___ |__/ [__  
+|  | |  | | \| |__/ |___ |___ |  \ ___] 
+
+*/
+
+//For TikTok links
+const tikTokUrl = /https:\/\/vm\.tiktok\.com\/[A-Za-z0-9]{9}\//;
+//Words and expressions that Linkle will respond to with unique functions.
+var triggers = new Map([
+
+  //If there is a dollar sign in the message, perform a more intensive RegEx search for stock symbols.
+  ['$', async (msg) => {
+    let $symbols = msg.content.match(/(?<=^|\s)(\$[A-Za-z\.\-]{1,16})/);
+    if ($symbols) {
+      let symbol = $symbols[0].substr(1).toLowerCase();
+      console.log(`Found a stock ticker! I'll ask AlphaAdvantage about ${symbol}.`);
+      re('ply', msg, await fetchStock(symbol));
+    }
+  }],
+
+  //If someone says something like "Linkle", "linkle-esque", or "Linkle's", put a sparkle on it! 
+  [/(?<=^|\s)(linkle)/i, (msg) => {
+    console.log('Someone said my nameeee!');
+    re('act', msg, '✨');
+  }],
+
+  //Post TikTok thumbnails.
+  [tikTokUrl, async (msg) => {
+    console.log('Ugh, a TikTok link...');
+    let garbage = await getTikTokThumbnail(msg.content.match(tikTokUrl)[0]).catch(err => {
+      re('ply', msg, `There was an error somewhere down the line...\n${err.message}`);
+    });
+    re('ply', msg, `Look at ${sparkle() ? 'this :sparkle:garbage:sparkle: that' : 'what'} <@${msg.author.id}> sent! `);
+    re('ply', msg, garbage);
+  }],
+]);
+
 //Iterates over a map, searching for trigger words in the message and calling the associated callbacks if found.
 function contains(msg, triggers) {
   triggers.forEach((callback, key, map) => {
@@ -174,7 +221,7 @@ function contains(msg, triggers) {
 //Processes and executes commands.
 async function command(msg) {
 
-  //Process the message to extract commands and args
+  //Process the message to extract commands and arguments
   let cont = msg.content.substr(1).trim().toLowerCase();
   let spaceIndex = cont.indexOf(' '); //Check if we need to process args
   let cmd, args = [];
@@ -285,6 +332,13 @@ async function postEmbed(msg, url) {
   }
 }
 
+/* 
+___  _ ____ ____ ____ ____ ___  
+|  \ | [__  |    |  | |__/ |  \ 
+|__/ | ___] |___ |__| |  \ |__/ 
+ 
+*/
+
 //Grouping multiple functions together that take actions in a guild, so that they can all use the same logging code.
 function re(type, msg, reply) {
 
@@ -307,6 +361,56 @@ function re(type, msg, reply) {
   console.log(logMsg);
   logStream.write(logMsg + ' -Linkle\r\n');
 }
+
+/*
+____ _   _ ____ ___ ____ _  _ 
+[__   \_/  [__   |  |___ |\/| 
+___]   |   ___]  |  |___ |  |  
+
+*/
+
+function readTxt(url) {
+
+  return new Promise((resolve, reject) => {
+
+    fs.readFile(url, 'utf8', (err, data) => {
+      if (err) { reject(err) };
+      resolve(data);
+    });
+
+  });
+
+}
+
+var cryptoMap = new Map();
+async function loadCryptoMap() {
+
+  try {
+    let csv = await readTxt('data/crypto.csv');
+    let rows = csv.split(/\r\n/);
+    for (let r in rows) {
+      let row = rows[r].split(',');
+      cryptoMap.set(row[0].toLowerCase(), row[1]);
+    }
+  } catch (err) {
+    console.log(`Aw, I can't get the crypto map: ${err}`)
+  } finally {
+    console.log(`Looks like the crypto map is ${cryptoMap.size} entries long. ${(cryptoMap.size > 0) ? `Nice.` : `Fuck.`}`);
+  }
+
+}
+loadCryptoMap();
+
+function sparkle() {
+  return (Math.random() < 0.05);
+}
+
+/* 
+____ ____ ____ _  _ ____ ____ ___ 
+|__/ |___ |  | |  | |___ [__   |  
+|  \ |___ |_\| |__| |___ ___]  |  
+ 
+*/
 
 //Accesses the AlphaVantage API for a quote of the provided stock symbol.
 function fetchStock(symbol) {
@@ -358,25 +462,25 @@ function fetchCurr(from, to) {
     var reqOut = Date.now();
     var get = https.get(`https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from}&to_currency=${to || 'USD'}&apikey=${process.env.ALPHAVANTAGE_KEY}`, (res) => {
 
-      /*  {
-              "Realtime Currency Exchange Rate": {
-                  "1. From_Currency Code": "USD",
-                  "2. From_Currency Name": "United States Dollar",
-                  "3. To_Currency Code": "JPY",
-                  "4. To_Currency Name": "Japanese Yen",
-                  "5. Exchange Rate": "108.85000000",
-                  "6. Last Refreshed": "2021-03-18 05:59:01",
-                  "7. Time Zone": "UTC",
-                  "8. Bid Price": "108.85000000",
-                  "9. Ask Price": "108.85000000"
-              } 
-          } 
-           OR
-          {
-              "Error Message": "Invalid API call. Please retry or visit the documentation (https://www.alphavantage.co/documentation/) for CURRENCY_EXCHANGE_RATE."
-          }
-          
-          */
+    /*  
+    {
+      "Realtime Currency Exchange Rate": {
+        "1. From_Currency Code": "USD",
+        "2. From_Currency Name": "United States Dollar",
+        "3. To_Currency Code": "JPY",
+        "4. To_Currency Name": "Japanese Yen",
+        "5. Exchange Rate": "108.85000000",
+        "6. Last Refreshed": "2021-03-18 05:59:01",
+        "7. Time Zone": "UTC",
+        "8. Bid Price": "108.85000000",
+        "9. Ask Price": "108.85000000"
+      } 
+    } 
+      OR
+    {
+        "Error Message": "Invalid API call. Please retry or visit the documentation (https://www.alphavantage.co/documentation/) for CURRENCY_EXCHANGE_RATE."
+    }
+    */
 
       let data = '';
       // A chunk of data has been recieved.
@@ -409,44 +513,14 @@ function fetchCurr(from, to) {
 //Accesses the AlphaVantage API for a dogeCoin quote in USD or the currency given.
 function dogeCoin(curr) {
 
-  return fetchCurr('doge');
+  return fetchCurr('doge'); //wow
 }
-
-function readTxt(url) {
-
-  return new Promise((resolve, reject) => {
-
-    fs.readFile(url, 'utf8', (err, data) => {
-      if (err) { reject(err) };
-      resolve(data);
-    });
-
-  });
-
-}
-
-var cryptoMap = new Map();
-async function loadCryptoMap() {
-
-  try {
-    let csv = await readTxt('data/crypto.csv');
-    let rows = csv.split(/\r\n/);
-    for (let r in rows) {
-      let row = rows[r].split(',');
-      cryptoMap.set(row[0].toLowerCase(), row[1]);
-    }
-  } catch (err) {
-    console.log(`Aw, I can't get the crypto map: ${err}`)
-  } finally {
-    console.log(`Looks like the crypto map is ${cryptoMap.size} entries long. ${(cryptoMap.size > 0) ? `Nice.` : `Fuck.`}`);
-  }
-
-}
-loadCryptoMap();
 
 //Downloads a file and returns the data as a string.
 function downloadString(url) {
 
+  //I did some experimentation and found out that my browser sends these headers.
+  //I tried spoofing them here in the hopes of a better response from TikTok.
   let options = {
     method: 'GET',
     headers: {
@@ -461,7 +535,7 @@ function downloadString(url) {
   return new Promise((resolve, reject) => {
 
     let str = '';
-    const request = https.request(url, options, res => {
+    const request = https.request(url, res => {
       if (res.statusCode !== 200) {
         let errorMessage = (url.indexOf('discord') < 0) ?
           `The domain didn't send me the resource.` :
@@ -488,6 +562,8 @@ function downloadString(url) {
   });
 }
 
+//A mess of a function that retrieves a TikTok thumbnail at great personal expense to Linkle.
+//For some reason TikTok's servers don't return a thumbnail when a TikTok link is normally posted, so this function is my attempt to provide some sort of context for what the TikTok post is about without having to actually look at it.
 function getTikTokThumbnail(url) {
 
   console.log(`Going to check out ${url}`);
@@ -548,8 +624,4 @@ function getTikTokThumbnail(url) {
 
     redirect.end();
   });
-}
-
-function sparkle() {
-  return (Math.random() < 0.05);
 }
