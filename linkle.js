@@ -193,11 +193,13 @@ var triggers = new Map([
   //Post TikTok thumbnails.
   [tikTokUrl, async (msg) => {
     console.log('Ugh, a TikTok link...');
-    let garbage = await getTikTokThumbnail(msg.content.match(tikTokUrl)[0]).catch(err => {
-      re('ply', msg, `There was an error somewhere down the line...\n${err.message}`);
+    await getTikTokThumbnail(msg.content.match(tikTokUrl)[0]).then(value => {
+      re('ply', msg, `Look at ${sparkle() ? 'this :sparkle:garbage:sparkle: that' : 'what'} <@${msg.author.id}> sent! `);
+      re('ply', msg, value);
+    }).catch(err => {
+      re('ply', msg, `:rotating_light: **TIKTOK ERROR** :rotating_light:\n${err}`);
     });
-    re('ply', msg, `Look at ${sparkle() ? 'this :sparkle:garbage:sparkle: that' : 'what'} <@${msg.author.id}> sent! `);
-    re('ply', msg, garbage);
+    
   }],
 ]);
 
@@ -344,8 +346,17 @@ function re(type, msg, reply) {
 
   switch (type) {
     case 'ply':
-      reply = (reply.length > 0) ? reply : ':regional_indicator_n::regional_indicator_u::regional_indicator_l::regional_indicator_l::zany_face:';
-      msg.channel.send(reply);
+      if (reply) {
+        //You can't send empty messages
+        reply = (reply.length > 0) ? reply : ':regional_indicator_n::regional_indicator_u::regional_indicator_l::regional_indicator_l::zany_face:';
+        //You can't send messages longer than 2,000 characters
+        if (reply.length > 2000) {
+          reply = reply.substr(0, 1983) + '... (too long)';
+          //Close code blocks
+          if (reply.includes('```')) reply += '```';
+        };
+        msg.channel.send(reply);
+      }
       break;
     case 'act':
       msg.react(reply);
@@ -585,10 +596,11 @@ function getTikTokThumbnail(url) {
       res.on('end', async (chunk) => {
 
         let trueUrlRegex = /href="([\S]+)"/;
-        let trueUrl = str.match(trueUrlRegex)[1]; //This is the (group)
+        let rawUrl = str.match(trueUrlRegex)[1]; //This is the (group)
+        let trueUrl = rawUrl.replace(/\&amp;/g, '&'); //Idk why I have to do this...
         console.log(`Okay, I got the nasty true URL: ${trueUrl}`);
         let reactPage;
-        exec(`curl ${trueUrl}`, function (err, stdout, stderr) {
+        exec(`curl -v ${trueUrl}`, function (err, stdout, stderr) {
 
           if (err) {
             console.log(err);
@@ -596,7 +608,7 @@ function getTikTokThumbnail(url) {
           }
           if (stderr) {
             console.log(stderr);
-            reject(`There was an issue with the curl command. I have to request the TikTok page with curl because TikTok flat out rejects requests sent by Node's https library :rolling_eyes:\n\`\`\`${stderr}\`\`\``);
+            //reject(`Fucking TikTok didn't send me anything! :rage:\n\`\`\`${stderr}\`\`\``);
           }
           reactPage = stdout;
 
