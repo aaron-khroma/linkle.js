@@ -608,7 +608,6 @@ function getTikTokThumbnail(url) {
           }
           if (stderr) {
             console.log(stderr);
-            //reject(`Fucking TikTok didn't send me anything! :rage:\n\`\`\`${stderr}\`\`\``);
           }
           reactPage = stdout;
 
