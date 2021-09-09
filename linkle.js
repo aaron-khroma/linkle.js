@@ -245,13 +245,16 @@ async function command(msg) {
     case '$':
     case 'stock':
       if (args.length < 1) {
-        re('ply', msg, 'Ya need to give me a ticker, dingus!');
+        re('act', msg, '❌');
+        re('ply', msg, 'Ya need to give me a ticker, ya dingus!');
         break;
       }
       (async () => {
         try {
+          re('act', msg, '💸');
           re('ply', msg, await fetchStock(args[0]));
         } catch (err) {
+          re('act', msg, '❌');
           re('ply', msg, err);
         }
       })()
@@ -259,13 +262,16 @@ async function command(msg) {
     case 'curr':
     case 'c':
       if (args.length < 1) {
-        re('ply', msg, 'Ya need to give me a currency code, dingus!');
+        re('act', msg, '❌');
+        re('ply', msg, 'Ya need to give me a currency code, ya dingus!');
         break;
       }
       (async () => {
         try {
+          re('act', msg, '💸');
           re('ply', msg, await fetchCurr(args[0], args[1]));
         } catch (err) {
+          re('act', msg, '❌');
           re('ply', msg, err);
         }
       })()
@@ -273,13 +279,16 @@ async function command(msg) {
     case 'doge':
       (async () => {
         try {
+          re('act', msg, '🐕');
           re('ply', msg, await dogeCoin(args[0]));
         } catch (err) {
+          re('act', msg, '❌');
           re('ply', msg, err);
         }
       })()
       break;
     case 'help':
+      re('act', msg, '👀');
       switch (args[0]) {
         case 'linkle':
           re('ply', msg, `\`> linkle\`\n*You say linkle, I say lonkle! Easy way to check if I'm online.*`);
@@ -311,6 +320,7 @@ async function command(msg) {
         relinkles.push(msg.id);
         //reli.relinkle(msg);
       } else {
+        re('act', msg, '❌');
         re('ply', msg, `I don't recognize that command...`);
       }
   }
